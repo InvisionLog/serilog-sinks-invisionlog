@@ -14,3 +14,5 @@ var log = new LoggerConfiguration()
     })
     .CreateLogger();
 ```
+
+See our [Documentation](https://docs.invisionlog.com/using/serilog) for more information.

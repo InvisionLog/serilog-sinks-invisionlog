@@ -13,8 +13,6 @@ namespace Serilog.Sinks.InvisionLog
     public class MapitomLogEvent
     {
         public string Message { get; set; }
-        public string ExceptionType { get; set; }
-        public string ExceptionMessage { get; set; }
         public LogLevel LogLevel { get; set; } = LogLevel.Debug;
         public DateTime DateTimeUtc { get; set; }
         public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>();

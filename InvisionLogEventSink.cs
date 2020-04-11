@@ -1,12 +1,13 @@
-﻿using System;
+﻿using Serilog.Events;
+using Serilog.Sinks.PeriodicBatching;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Serilog.Events;
-using Serilog.Sinks.PeriodicBatching;
+using Console = System.Console;
 
 namespace Serilog.Sinks.InvisionLog
 {
@@ -17,10 +18,10 @@ namespace Serilog.Sinks.InvisionLog
         private readonly IFormatProvider _formatProvider;
         private readonly HttpClient _httpClient;
 
-        public InvisionLogEventSink(string mapitomServerUrl, 
-            string staticKey, 
+        public InvisionLogEventSink(string mapitomServerUrl,
+            string staticKey,
             string applicationKey,
-            IFormatProvider formatProvider) 
+            IFormatProvider formatProvider)
         : base(1000, TimeSpan.FromSeconds(2), 100000)
         {
             try
@@ -40,13 +41,22 @@ namespace Serilog.Sinks.InvisionLog
         {
             var mapitomLogEvents = events.ToList().ConvertAll(logEvent =>
             {
-                return new MapitomLogEvent
+                var mapitomLogEvent = new MapitomLogEvent
                 {
                     LogLevel = (LogLevel)Enum.Parse(typeof(LogLevel), $"{logEvent.Level}"),
                     Message = logEvent.RenderMessage(_formatProvider),
                     DateTimeUtc = logEvent.Timestamp.DateTime.ToUniversalTime(),
                     Properties = logEvent.Properties.ToDictionary(p => p.Key, p => p.Value.ToString())
                 };
+
+                if (logEvent.Exception != null)
+                {
+                    mapitomLogEvent.Properties.Add("ExceptionMessage", logEvent.Exception.Message);
+                    mapitomLogEvent.Properties.Add("ExceptionType", logEvent.Exception.GetType()?.Name);
+                    mapitomLogEvent.Properties.Add("Stacktrace", logEvent.Exception.StackTrace);
+                }
+
+                return mapitomLogEvent;
             });
 
             var mapitomLogData = new MapitomLogData
@@ -58,7 +68,7 @@ namespace Serilog.Sinks.InvisionLog
 
             var json = ConvertToJson(mapitomLogData);
             var uri = "/api/logger/logs";
-            var task = await _httpClient.PostAsync(uri, new StringContent(json, Encoding.UTF8, "application/json"));
+            await _httpClient.PostAsync(uri, new StringContent(json, Encoding.UTF8, "application/json"));
         }
 
         private string ConvertToJson(MapitomLogData mapitomLogEvents)
